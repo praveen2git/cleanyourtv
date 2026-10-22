@@ -50,19 +50,11 @@ final class Config {
                 ctx.getResources().getBoolean(defaultRes));
     }
 
-    /** A wallpaper choice of "auto:<minutes>" rotates the wallpapers/ collection instead of showing one picture. */
-    static final String WALLPAPER_AUTO_PREFIX = "auto:";
-
-    /** The interval of an "auto:<minutes>" wallpaper choice, 1 to 1440; 0 for any other choice. */
-    static int autoWallpaperMinutes(String choice) {
-        if (choice == null || !choice.startsWith(WALLPAPER_AUTO_PREFIX)) return 0;
-        try {
-            int minutes = Integer.parseInt(choice.substring(WALLPAPER_AUTO_PREFIX.length()));
-            return minutes >= 1 && minutes <= 1440 ? minutes : 0;
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
+    /**
+     * Launcher settings' "Change wallpaper": minutes between pictures of the wallpapers/ collection, 0 for Off. It
+     * wins over a single picked picture; picking a picture or None turns it off. Cleared with the wallpaper choice.
+     */
+    static final String WALLPAPER_AUTO_KEY = "wallpaper_auto_minutes";
 
     /** The first on-TV switch, On/Off for the last input; read only when power_on_to was never chosen. */
     static final String RESUME_LAST_INPUT_KEY = "resume_last_input";
@@ -457,7 +449,8 @@ final class Config {
         // An on-TV wallpaper pick overrides the theme: a filename from the wallpapers/
         // collection, or "none". Unset means the theme decides (off by default).
         String wallpaperChoice = choices.getString(WALLPAPER_CHOICE_KEY, null);
-        int autoMinutes = autoWallpaperMinutes(wallpaperChoice);
+        int autoMinutes = choices.getInt(WALLPAPER_AUTO_KEY, 0);
+        if (autoMinutes < 0 || autoMinutes > 1440) autoMinutes = 0;
         List<File> collection = autoMinutes > 0 && dir != null
                 ? WallpaperRotation.images(new File(dir, "wallpapers")) : Collections.emptyList();
         if (!collection.isEmpty()) {
@@ -539,11 +532,11 @@ final class Config {
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
                     .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
-                    .remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY);
+                    .remove(WALLPAPER_AUTO_KEY).remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations").remove("advanced_effects")
-                    .remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY)
+                    .remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY).remove(WALLPAPER_AUTO_KEY)
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
                     .putString(THEME_SIGNATURE_KEY, signature).commit();
         }

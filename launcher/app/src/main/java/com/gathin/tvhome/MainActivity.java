@@ -1572,6 +1572,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArt.setVisibility(heroArtShown ? View.VISIBLE : View.GONE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
         heroArt.forceHasOverlappingRendering(false);
+        // The scrim keeps text readable over the artwork; over a wallpaper it only darkened the picture.
+        if (!heroArtShown) return;
         View scrim = findViewById(R.id.heroScrim);
         scrim.setBackground(scrimDrawable());
         scrim.setVisibility(View.VISIBLE);
