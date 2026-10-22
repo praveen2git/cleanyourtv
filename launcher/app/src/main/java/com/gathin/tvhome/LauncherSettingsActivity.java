@@ -24,6 +24,8 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
+    /** The On/Off rows below Apple TV look; refresh() relabels them, since Follow theme can change two of them. */
+    private final List<Runnable> switchLabels = new java.util.ArrayList<>();
     private TextView powerOnChoice;
     private String powerOn;
     private TextView tvosChoice;
@@ -106,6 +108,16 @@ public final class LauncherSettingsActivity extends Activity {
             setResult(RESULT_OK);   // Home rebuilds its top bar when this screen closes
             refresh();
         });
+        bindSwitch(R.id.cinematicChoice, R.string.cinematic_state, Config.CINEMATIC_KEY,
+                () -> Config.load(this).cinematicHome);
+        bindSwitch(R.id.glowChoice, R.string.glow_state, Config.AMBIENT_GLOW_KEY,
+                () -> Config.load(this).ambientGlow);
+        bindSwitch(R.id.dockDotsChoice, R.string.dock_dots_state, Config.DOCK_DOTS_KEY,
+                () -> Config.deviceSwitch(this, Config.DOCK_DOTS_KEY, R.bool.dock_dots));
+        bindSwitch(R.id.dnsButtonChoice, R.string.dns_button_state, Config.DNS_BUTTON_KEY,
+                () -> Config.deviceSwitch(this, Config.DNS_BUTTON_KEY, R.bool.dns_button));
+        bindSwitch(R.id.statsBarChoice, R.string.stats_bar_state, Config.STATS_BAR_KEY,
+                () -> Config.deviceSwitch(this, Config.STATS_BAR_KEY, R.bool.stats_on_top_bar));
         // Home, then Last input (TVs with a Live TV app), then Last app; InputKeyService reads it at each power on.
         powerOnChoice = findViewById(R.id.powerOnChoice);
         powerOn = Config.powerOnTo(this);
@@ -120,7 +132,8 @@ public final class LauncherSettingsActivity extends Activity {
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
-                    .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY).commit();
+                    .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
+                    .remove(Config.CINEMATIC_KEY).remove(Config.AMBIENT_GLOW_KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
@@ -189,6 +202,19 @@ public final class LauncherSettingsActivity extends Activity {
         return -1;
     }
 
+    /** An On/Off row saved under key: OK flips what current reports, and Home rebuilds when this screen closes. */
+    private void bindSwitch(int id, int labelRes, String key, java.util.function.BooleanSupplier current) {
+        TextView row = findViewById(id);
+        Runnable label = () -> row.setText(getString(labelRes,
+                getString(current.getAsBoolean() ? R.string.on : R.string.off)));
+        row.setOnClickListener(v -> {
+            choices.edit().putBoolean(key, !current.getAsBoolean()).apply();
+            setResult(RESULT_OK);
+            refresh();
+        });
+        switchLabels.add(label);
+    }
+
     private void setAdvanced(boolean enabled) {
         advancedEffects = enabled;
         choices.edit().putBoolean("advanced_effects", enabled).apply();
@@ -208,6 +234,7 @@ public final class LauncherSettingsActivity extends Activity {
         advancedChoice.setText(getString(R.string.advanced_effects_state,
                 getString(advancedEffects ? R.string.on : R.string.off)));
         tvosChoice.setText(getString(R.string.tvos_style_state, getString(tvosStyle ? R.string.on : R.string.off)));
+        for (Runnable label : switchLabels) label.run();
         powerOnChoice.setText(getString(R.string.power_on_state, getString(
                 Config.POWER_ON_INPUT.equals(powerOn) ? R.string.power_on_input
                         : Config.POWER_ON_APP.equals(powerOn) ? R.string.power_on_app : R.string.power_on_home)));
@@ -224,6 +251,7 @@ public final class LauncherSettingsActivity extends Activity {
     private boolean hasOnTvChoices() {
         return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
+                || choices.contains(Config.CINEMATIC_KEY) || choices.contains(Config.AMBIENT_GLOW_KEY)
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY);
     }
 

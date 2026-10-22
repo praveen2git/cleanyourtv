@@ -39,6 +39,17 @@ final class Config {
     static final String SETTINGS_NAME = "launcher_settings";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
+    /** On-TV choices over the theme's cinematic_home and ambient_glow; Follow theme and a theme push clear them. */
+    static final String CINEMATIC_KEY = "cinematic_home", AMBIENT_GLOW_KEY = "ambient_glow";
+    /** On-TV switches for this TV's own options (config.xml only, no theme key), kept across theme pushes. */
+    static final String DOCK_DOTS_KEY = "dock_dots", DNS_BUTTON_KEY = "dns_button", STATS_BAR_KEY = "stats_on_top_bar";
+
+    /** A config.xml switch the owner can change in Launcher settings: their choice, else config.xml. */
+    static boolean deviceSwitch(Context ctx, String key, int defaultRes) {
+        return ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getBoolean(key,
+                ctx.getResources().getBoolean(defaultRes));
+    }
+
     /** The first on-TV switch, On/Off for the last input; read only when power_on_to was never chosen. */
     static final String RESUME_LAST_INPUT_KEY = "resume_last_input";
     /** Launcher settings' "Power on to": Home, the last input or the last app. A theme push leaves it alone. */
@@ -410,6 +421,8 @@ final class Config {
         if (chosenRows >= 0 && chosenRows <= 3) rowsBelow = chosenRows;
         animations = choices.getBoolean("animations", animations);
         advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
+        cinematic = choices.getBoolean(CINEMATIC_KEY, cinematic);
+        ambientGlow = choices.getBoolean(AMBIENT_GLOW_KEY, ambientGlow);
         File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
         // A theme can also switch the wallpaper off while the file is still there.
@@ -501,10 +514,12 @@ final class Config {
             // explicit theme push or reset by the updated tools.
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
-                    .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY);
+                    .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
+                    .remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations").remove("advanced_effects")
+                    .remove(CINEMATIC_KEY).remove(AMBIENT_GLOW_KEY)
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
                     .putString(THEME_SIGNATURE_KEY, signature).commit();
         }

@@ -63,6 +63,12 @@
     <string name="tv_settings">TV system settings</string>
     <string name="tvos_style_state">Apple TV look: %1$s</string>
     <string name="tvos_style_hint">Round icon buttons without names, no greeting and no band behind the dock. Off: buttons show their names, as in the original launcher.</string>
+    <string name="cinematic_state">Cinematic shelf: %1$s</string>
+    <string name="glow_state">Glow behind apps: %1$s</string>
+    <string name="dock_dots_state">Dock dots: %1$s</string>
+    <string name="dns_button_state">Ad block button: %1$s</string>
+    <string name="stats_bar_state">RAM line on the top bar: %1$s</string>
+    <string name="home_look_hint">Cinematic shelf: the large app name and its artwork above the dock (hidden while a wallpaper is on). Glow: soft light in the selected app\'s colour. Dock dots: a dot per dock app under the name. RAM line: free memory and storage under the clock when you press Up.</string>
     <string name="power_on_state">Power on to: %1$s</string>
     <string name="power_on_home">Home</string>
     <string name="power_on_input">Last input</string>

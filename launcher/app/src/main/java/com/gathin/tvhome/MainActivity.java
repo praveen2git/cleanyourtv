@@ -422,7 +422,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         raceHeadline = findViewById(R.id.raceHeadline);
         raceSessions = findViewById(R.id.raceSessions);
         showStats = cfg.showStats;
-        statsOnTopBar = !showStats && getResources().getBoolean(R.bool.stats_on_top_bar);
+        statsOnTopBar = !showStats && Config.deviceSwitch(this, Config.STATS_BAR_KEY, R.bool.stats_on_top_bar);
         tvosStyle = Config.tvosStyle(this);
         if (tvosStyle) glass.setMinimal(true);
         // Its room is kept, so the line appearing on the top bar never moves the dock.
@@ -601,7 +601,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         btnDns = findViewById(R.id.btnDns);
         btnDns.setOnClickListener(v -> showDnsMenu());
-        btnDns.setVisibility(getResources().getBoolean(R.bool.dns_button) ? View.VISIBLE : View.GONE);
+        btnDns.setVisibility(Config.deviceSwitch(this, Config.DNS_BUTTON_KEY, R.bool.dns_button) ? View.VISIBLE : View.GONE);
         if (tvosStyle) {
             iconOnly((TextView) btnInputs, getString(R.string.inputs));
             iconOnly((TextView) btnSettings, getString(R.string.settings));
@@ -1568,7 +1568,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 68f);
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
-        heroDots.setVisibility(getResources().getBoolean(R.bool.dock_dots) ? View.VISIBLE : View.GONE);
+        heroDots.setVisibility(Config.deviceSwitch(this, Config.DOCK_DOTS_KEY, R.bool.dock_dots) ? View.VISIBLE : View.GONE);
         heroArt.setVisibility(heroArtShown ? View.VISIBLE : View.GONE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
         heroArt.forceHasOverlappingRendering(false);
@@ -1649,7 +1649,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** One dot per dock app, the focused one drawn long and white. Hebrew docks start on the right, so do the dots. */
     private void updateHeroDots(int position) {
-        if (!getResources().getBoolean(R.bool.dock_dots)) {
+        if (!Config.deviceSwitch(this, Config.DOCK_DOTS_KEY, R.bool.dock_dots)) {
             heroDots.setVisibility(View.GONE);
             return;
         }
