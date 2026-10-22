@@ -158,29 +158,38 @@ public final class LauncherSettingsActivity extends Activity {
         for (int i = views.length - 1; i >= 0; i--) row.addView(views[i]);
     }
 
+    /** The "Change automatically" rows, before the pictures: every 30 minutes, every hour, every day. */
+    private static final int[] AUTO_MINUTES = {30, 60, 1440};
+    private static final int[] AUTO_LABELS = {R.string.wallpaper_auto_30, R.string.wallpaper_auto_60,
+            R.string.wallpaper_auto_day};
+
     private void showWallpaperPicker() {
         File dir = Config.dir(this);
         List<File> images = new java.util.ArrayList<>(WallpaperRotation.images(
                 dir == null ? null : new File(dir, "wallpapers")));
+        // Rotating needs a collection: with fewer than two pictures there is nothing to change to.
+        int autoRows = images.size() >= 2 ? AUTO_MINUTES.length : 0;
         // A theme with a single wallpaper.jpg offers that picture too (Config maps the choice back to it).
         File single = dir == null ? null : new File(dir, Config.WALLPAPER_NAME);
         if (single != null && single.isFile()) images.add(0, single);
-        String[] labels = new String[images.size() + 1];
-        for (int i = 0; i < images.size(); i++) labels[i] = images.get(i).getName();
-        labels[images.size()] = getString(R.string.wallpaper_none);
+        String[] labels = new String[autoRows + images.size() + 1];
+        for (int i = 0; i < autoRows; i++) labels[i] = getString(AUTO_LABELS[i]);
+        for (int i = 0; i < images.size(); i++) labels[autoRows + i] = images.get(i).getName();
+        labels[labels.length - 1] = getString(R.string.wallpaper_none);
         String current = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        int checked = "none".equals(current) ? images.size()
-                : indexOf(images, current);
+        int checked = "none".equals(current) ? labels.length - 1 : -1;
+        int auto = Config.autoWallpaperMinutes(current);
+        for (int i = 0; i < autoRows; i++) if (AUTO_MINUTES[i] == auto) checked = i;
+        int picture = indexOf(images, current);
+        if (picture >= 0) checked = autoRows + picture;
         new AlertDialog.Builder(this)
                 .setTitle(R.string.wallpaper_label)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     dialog.dismiss();
-                    if (which == images.size()) {
-                        choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, "none").apply();
-                    } else {
-                        choices.edit().putString(Config.WALLPAPER_CHOICE_KEY,
-                                images.get(which).getName()).apply();
-                    }
+                    String choice = which < autoRows ? Config.WALLPAPER_AUTO_PREFIX + AUTO_MINUTES[which]
+                            : which == labels.length - 1 ? "none"
+                            : images.get(which - autoRows).getName();
+                    choices.edit().putString(Config.WALLPAPER_CHOICE_KEY, choice).apply();
                     setResult(RESULT_OK);
                     Toast.makeText(this, R.string.wallpaper_applied, Toast.LENGTH_SHORT).show();
                     refresh();
@@ -241,8 +250,12 @@ public final class LauncherSettingsActivity extends Activity {
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
+        int autoMinutes = Config.autoWallpaperMinutes(wallpaperCurrent);
+        int autoLabel = -1;
+        for (int i = 0; i < AUTO_MINUTES.length; i++) if (AUTO_MINUTES[i] == autoMinutes) autoLabel = AUTO_LABELS[i];
         wallpaperChoice.setText(getString(R.string.wallpaper_state,
-                "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
+                autoLabel != -1 ? getString(autoLabel)
+                        : "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
                         : wallpaperCurrent != null ? wallpaperCurrent
                         : getString(R.string.wallpaper_theme_default)));
         followThemeChoice.setSelected(!hasOnTvChoices());

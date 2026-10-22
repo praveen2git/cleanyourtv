@@ -50,6 +50,20 @@ final class Config {
                 ctx.getResources().getBoolean(defaultRes));
     }
 
+    /** A wallpaper choice of "auto:<minutes>" rotates the wallpapers/ collection instead of showing one picture. */
+    static final String WALLPAPER_AUTO_PREFIX = "auto:";
+
+    /** The interval of an "auto:<minutes>" wallpaper choice, 1 to 1440; 0 for any other choice. */
+    static int autoWallpaperMinutes(String choice) {
+        if (choice == null || !choice.startsWith(WALLPAPER_AUTO_PREFIX)) return 0;
+        try {
+            int minutes = Integer.parseInt(choice.substring(WALLPAPER_AUTO_PREFIX.length()));
+            return minutes >= 1 && minutes <= 1440 ? minutes : 0;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     /** The first on-TV switch, On/Off for the last input; read only when power_on_to was never chosen. */
     static final String RESUME_LAST_INPUT_KEY = "resume_last_input";
     /** Launcher settings' "Power on to": Home, the last input or the last app. A theme push leaves it alone. */
@@ -443,7 +457,17 @@ final class Config {
         // An on-TV wallpaper pick overrides the theme: a filename from the wallpapers/
         // collection, or "none". Unset means the theme decides (off by default).
         String wallpaperChoice = choices.getString(WALLPAPER_CHOICE_KEY, null);
-        if ("none".equals(wallpaperChoice)) {
+        int autoMinutes = autoWallpaperMinutes(wallpaperChoice);
+        List<File> collection = autoMinutes > 0 && dir != null
+                ? WallpaperRotation.images(new File(dir, "wallpapers")) : Collections.emptyList();
+        if (!collection.isEmpty()) {
+            // "Change automatically" in Launcher settings: the whole wallpapers/ collection at that interval.
+            wallpapers.clear();
+            wallpapers.addAll(collection);
+            wallpaper = collection.get(0);
+            wallpaperEnabled = true;
+            rotationMinutes = autoMinutes;
+        } else if ("none".equals(wallpaperChoice)) {
             wallpapers.clear();
             wallpaper = null;
             wallpaperEnabled = false;

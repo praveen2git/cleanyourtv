@@ -69,6 +69,9 @@
     <string name="dns_button_state">Ad block button: %1$s</string>
     <string name="stats_bar_state">RAM line on the top bar: %1$s</string>
     <string name="home_look_hint">Cinematic shelf: the large app name and its artwork above the dock (hidden while a wallpaper is on). Glow: soft light in the selected app\'s colour. Dock dots: a dot per dock app under the name. RAM line: free memory and storage under the clock when you press Up.</string>
+    <string name="wallpaper_auto_30">Change every 30 minutes</string>
+    <string name="wallpaper_auto_60">Change every hour</string>
+    <string name="wallpaper_auto_day">Change every day</string>
     <string name="power_on_state">Power on to: %1$s</string>
     <string name="power_on_home">Home</string>
     <string name="power_on_input">Last input</string>
