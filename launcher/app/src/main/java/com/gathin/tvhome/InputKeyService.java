@@ -84,12 +84,10 @@ public class InputKeyService extends AccessibilityService {
     @Override
     public void onDestroy() {
         running = null;
-        if (resumeInput) {
-            handler.removeCallbacksAndMessages(null);
-            try {
-                unregisterReceiver(screenReceiver);
-            } catch (IllegalArgumentException ignored) {
-            }
+        handler.removeCallbacksAndMessages(null);
+        try {
+            unregisterReceiver(screenReceiver);
+        } catch (IllegalArgumentException ignored) {
         }
         super.onDestroy();
     }
@@ -110,33 +108,25 @@ public class InputKeyService extends AccessibilityService {
         tvKeys = getResources().getBoolean(R.bool.input_key_tv_keys);
         logKeys = getResources().getBoolean(R.bool.log_keys);
         tvPackage = getString(R.string.live_tv_package);
-        resumeInput = !tvPackage.isEmpty();
-        if (resumeInput) {
-            // Read before any window event of this boot can overwrite it: Home comes up first at every boot.
-            boolean wasWatching = prefs().getBoolean(PREF_WATCHING, false);
-            ignoreUntil = android.os.SystemClock.uptimeMillis() + 15_000;
-            if (wasWatching && Config.resumeLastInput(this)
-                    && android.os.SystemClock.elapsedRealtime() < 5 * 60_000) {
-                openTvWhenReady();   // just booted: back to the input, like Google TV did
-            }
-            android.content.IntentFilter screenOn = new android.content.IntentFilter(Intent.ACTION_SCREEN_ON);
-            registerReceiver(screenReceiver, screenOn);
+        // Read before any window event of this boot can overwrite it: Home comes up first at every boot.
+        String target = resumeTarget();
+        ignoreUntil = android.os.SystemClock.uptimeMillis() + 15_000;
+        if (target != null && android.os.SystemClock.elapsedRealtime() < 5 * 60_000) {
+            openWhenReady(target);   // just booted: back to what was on screen, like Google TV did for inputs
         }
+        registerReceiver(screenReceiver, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
     }
 
-    // ---- power on: back to the last input -----------------------------------------------------------
-    // Google TV's "Power on: last used input" lived in the stock launcher, which is disabled. This keeps track
-    // of whether the TV app (the HDMI inputs and the tuner) was on screen, and opens it again at power-on when
-    // Home came up instead. Whatever was on screen comes back by itself after a short standby; this only acts
-    // when the TV booted, or woke into Home.
+    // ---- power on: back to the last input or app ----------------------------------------------------
+    // Google TV's "Power on: last used input" lived in the stock launcher, which is disabled. This keeps track of
+    // what was on screen (the TV app with the HDMI inputs and the tuner, another app, or Home) and opens it again at
+    // power-on when Home came up instead, as Launcher settings' "Power on to" asks. Whatever was on screen comes back
+    // by itself after a short standby; this only acts when the TV booted, or woke into Home.
 
     private static final String PREF_WATCHING = "watching_input";
+    /** The app on screen when the TV went off, or Home's own package, for "Power on to: Last app". */
+    private static final String PREF_LAST_APP = "last_app";
     private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-    /**
-     * A Live TV app is configured, so what is on screen is tracked. It is tracked even while Launcher settings'
-     * "Power on to last input" is off, so switching it on already knows; only opening the TV app checks the switch.
-     */
-    private boolean resumeInput;
     private String tvPackage = "";
     /** Window events right after a boot are Home starting, not the owner's choice: they must not clear the flag. */
     private long ignoreUntil;
@@ -146,12 +136,25 @@ public class InputKeyService extends AccessibilityService {
         return getSharedPreferences("resume_input", MODE_PRIVATE);
     }
 
+    /** The package Launcher settings' "Power on to" asks to open, from what was on screen at power-off; null for Home. */
+    private String resumeTarget() {
+        switch (Config.powerOnTo(this)) {
+            case Config.POWER_ON_INPUT:
+                return !tvPackage.isEmpty() && prefs().getBoolean(PREF_WATCHING, false) ? tvPackage : null;
+            case Config.POWER_ON_APP:
+                String app = prefs().getString(PREF_LAST_APP, "");
+                return app.isEmpty() || app.equals(getPackageName()) ? null : app;
+            default:
+                return null;
+        }
+    }
+
     /**
-     * At boot, opens the TV app only once Android's TV provider is up. Sony's TV app reads that provider on its main
+     * At boot, opens the app only once Android's TV provider is up. Sony's TV app reads that provider on its main
      * thread, so opened 1.5 s after boot it froze waiting for it and showed "TV isn't responding". Acquiring the
      * provider waits until its process has started (WRITE_EPG_DATA, a normal permission, allows it).
      */
-    private void openTvWhenReady() {
+    private void openWhenReady(String pkg) {
         new Thread(() -> {
             long delay = 1500;
             try (android.content.ContentProviderClient tv = getContentResolver()
@@ -160,44 +163,53 @@ public class InputKeyService extends AccessibilityService {
             } catch (SecurityException e) {
                 delay = 20_000;
             }
-            handler.postDelayed(this::openTv, delay);
+            handler.postDelayed(() -> open(pkg), delay);
         }, "resume-input").start();
     }
 
-    private void openTv() {
+    private void open(String pkg) {
         if (!foreground.isEmpty() && !foreground.equals(getPackageName())) return;   // already somewhere else
-        Intent tv = getPackageManager().getLeanbackLaunchIntentForPackage(tvPackage);
-        if (tv == null) return;
+        Intent launch = launchIntent(pkg);
+        if (launch == null) return;
         try {
-            startActivity(tv.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (ActivityNotFoundException | SecurityException ignored) {
         }
+    }
+
+    /** The TV entry point, or the ordinary one for an app without it (opened from All apps). */
+    private Intent launchIntent(String pkg) {
+        Intent launch = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
+        return launch != null ? launch : getPackageManager().getLaunchIntentForPackage(pkg);
     }
 
     private final android.content.BroadcastReceiver screenReceiver = new android.content.BroadcastReceiver() {
         @Override
         public void onReceive(android.content.Context context, Intent intent) {
-            // Woke into Home although the TV app was on screen when it went off (a long standby).
+            // Woke into Home although something else was on screen when it went off (a long standby).
             ignoreUntil = android.os.SystemClock.uptimeMillis() + 3000;
             handler.postDelayed(() -> {
-                if (prefs().getBoolean(PREF_WATCHING, false) && getPackageName().equals(foreground)
-                        && Config.resumeLastInput(InputKeyService.this)) openTv();
+                String target = resumeTarget();
+                if (target != null && getPackageName().equals(foreground)) open(target);
             }, 2000);
         }
     };
 
-    /** Remembers whether the TV app or something else the owner chose (Home, another app) is on screen. */
+    /** Remembers what the owner chose to have on screen: the TV app, another app, or Home. */
     private void trackForeground(AccessibilityEvent event) {
-        if (!resumeInput || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence pkg = event.getPackageName();
         if (pkg == null) return;
         String p = pkg.toString();
-        boolean tv = p.equals(tvPackage);
-        boolean choice = tv || p.equals(getPackageName()) || getPackageManager().getLeanbackLaunchIntentForPackage(p) != null;
+        boolean tv = !tvPackage.isEmpty() && p.equals(tvPackage);
+        boolean choice = tv || p.equals(getPackageName()) || launchIntent(p) != null;
         if (!choice) return;   // system UI, volume bar, keyboard, dialogs: not a change of what is being watched
         foreground = p;
         if (android.os.SystemClock.uptimeMillis() < ignoreUntil && !tv) return;
-        if (prefs().getBoolean(PREF_WATCHING, false) != tv) prefs().edit().putBoolean(PREF_WATCHING, tv).apply();
+        android.content.SharedPreferences prefs = prefs();
+        if (prefs.getBoolean(PREF_WATCHING, false) != tv || !p.equals(prefs.getString(PREF_LAST_APP, ""))) {
+            prefs.edit().putBoolean(PREF_WATCHING, tv).putString(PREF_LAST_APP, p).apply();
+        }
     }
 
     private static boolean contains(int[] codes, int keyCode) {

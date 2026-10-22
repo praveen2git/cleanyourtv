@@ -39,8 +39,18 @@ final class Config {
     static final String SETTINGS_NAME = "launcher_settings";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
-    /** Launcher settings' "Power on to last input"; a theme push leaves it alone. */
+    /** The first on-TV switch, On/Off for the last input; read only when power_on_to was never chosen. */
     static final String RESUME_LAST_INPUT_KEY = "resume_last_input";
+    /** Launcher settings' "Power on to": Home, the last input or the last app. A theme push leaves it alone. */
+    static final String POWER_ON_KEY = "power_on_to";
+    static final String POWER_ON_HOME = "home", POWER_ON_INPUT = "input", POWER_ON_APP = "app";
+
+    /** What the TV opens at power-on: the owner's choice, else config.xml resume_last_input (Last input or Home). */
+    static String powerOnTo(Context ctx) {
+        String chosen = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getString(POWER_ON_KEY, null);
+        if (POWER_ON_HOME.equals(chosen) || POWER_ON_INPUT.equals(chosen) || POWER_ON_APP.equals(chosen)) return chosen;
+        return resumeLastInput(ctx) ? POWER_ON_INPUT : POWER_ON_HOME;
+    }
 
     /** Launcher settings' "Apple TV look"; a theme push leaves it alone. */
     static final String TVOS_STYLE_KEY = "tvos_style";

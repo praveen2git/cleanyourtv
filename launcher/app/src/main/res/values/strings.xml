@@ -63,8 +63,11 @@
     <string name="tv_settings">TV system settings</string>
     <string name="tvos_style_state">Apple TV look: %1$s</string>
     <string name="tvos_style_hint">Round icon buttons without names, no greeting and no band behind the dock. Off: buttons show their names, as in the original launcher.</string>
-    <string name="resume_last_input_state">Power on to last input: %1$s</string>
-    <string name="resume_last_input_hint">If you were watching TV or an HDMI input when the TV went off, it opens again at power on. Off: the TV always starts on Home.</string>
+    <string name="power_on_state">Power on to: %1$s</string>
+    <string name="power_on_home">Home</string>
+    <string name="power_on_input">Last input</string>
+    <string name="power_on_app">Last app</string>
+    <string name="power_on_hint">Last input opens TV or the HDMI input you were watching when the TV went off. Last app opens whatever you were using: an input or any app. The app starts fresh; it may not continue the same video.</string>
     <string name="quick_picture">Display</string>
     <string name="quick_network">Network</string>
     <string name="quick_apps">Apps</string>

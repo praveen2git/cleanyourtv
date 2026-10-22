@@ -24,8 +24,8 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
-    private TextView resumeInputChoice;
-    private boolean resumeInput;
+    private TextView powerOnChoice;
+    private String powerOn;
     private TextView tvosChoice;
     private boolean tvosStyle;
     private int columns;
@@ -106,18 +106,16 @@ public final class LauncherSettingsActivity extends Activity {
             setResult(RESULT_OK);   // Home rebuilds its top bar when this screen closes
             refresh();
         });
-        // Only for TVs with a Live TV app to go back to; InputKeyService reads the choice at each power on.
-        resumeInputChoice = findViewById(R.id.resumeInputChoice);
-        resumeInput = Config.resumeLastInput(this);
-        resumeInputChoice.setOnClickListener(v -> {
-            resumeInput = !resumeInput;
-            choices.edit().putBoolean(Config.RESUME_LAST_INPUT_KEY, resumeInput).apply();
+        // Home, then Last input (TVs with a Live TV app), then Last app; InputKeyService reads it at each power on.
+        powerOnChoice = findViewById(R.id.powerOnChoice);
+        powerOn = Config.powerOnTo(this);
+        boolean liveTv = !getString(R.string.live_tv_package).isEmpty();
+        powerOnChoice.setOnClickListener(v -> {
+            powerOn = Config.POWER_ON_HOME.equals(powerOn) ? (liveTv ? Config.POWER_ON_INPUT : Config.POWER_ON_APP)
+                    : Config.POWER_ON_INPUT.equals(powerOn) ? Config.POWER_ON_APP : Config.POWER_ON_HOME;
+            choices.edit().putString(Config.POWER_ON_KEY, powerOn).apply();
             refresh();
         });
-        if (getString(R.string.live_tv_package).isEmpty()) {
-            resumeInputChoice.setVisibility(View.GONE);
-            findViewById(R.id.resumeInputHint).setVisibility(View.GONE);
-        }
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
@@ -210,8 +208,9 @@ public final class LauncherSettingsActivity extends Activity {
         advancedChoice.setText(getString(R.string.advanced_effects_state,
                 getString(advancedEffects ? R.string.on : R.string.off)));
         tvosChoice.setText(getString(R.string.tvos_style_state, getString(tvosStyle ? R.string.on : R.string.off)));
-        resumeInputChoice.setText(getString(R.string.resume_last_input_state,
-                getString(resumeInput ? R.string.on : R.string.off)));
+        powerOnChoice.setText(getString(R.string.power_on_state, getString(
+                Config.POWER_ON_INPUT.equals(powerOn) ? R.string.power_on_input
+                        : Config.POWER_ON_APP.equals(powerOn) ? R.string.power_on_app : R.string.power_on_home)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
