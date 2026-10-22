@@ -135,6 +135,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private LinearLayout heroDots;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
     private boolean cinematic;
+    /**
+     * The cinematic shelf paints the focused app's artwork over the top of the screen, which hid a wallpaper behind
+     * it (a blue tile turned any wallpaper blue). With a wallpaper on, the wallpaper is the backdrop instead.
+     */
+    private boolean heroArtShown;
     /** config.xml ambient_glow, overridable by a theme. Off: the glow view is gone and no fade or colour animator
      *  is started for it, so a focus move costs nothing extra on a launcher that runs all day. */
     private boolean ambientGlow;
@@ -400,6 +405,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
         glowStyle = cfg.glowStyle;
+        heroArtShown = cinematic && !(cfg.wallpaperEnabled && !cfg.wallpapers.isEmpty());
         if (cinematic) setUpCinematicShelf();
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
@@ -823,6 +829,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }, 400);
         }
         if (showStats) startStats();
+        // Back on Home with a top-bar button still focused: no focus change follows, so fill its line here.
+        View focus = getCurrentFocus();
+        if (statsOnTopBar && focus != null && focus.getParent() == findViewById(R.id.topButtons)) {
+            startStats();
+            showTopBarLabel(focus);
+        }
         sky.update();
         wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
@@ -1488,7 +1500,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int color = adapter.ambientColorAt(position);
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
-        if (cinematic) showHeroArt(position);
+        if (heroArtShown) showHeroArt(position);
 
         if (!animations || reducedMotion) {
             // Snap the shelf instead of sliding and fading it: each of those frames repaints the
@@ -1557,7 +1569,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
         heroDots.setVisibility(getResources().getBoolean(R.bool.dock_dots) ? View.VISIBLE : View.GONE);
-        heroArt.setVisibility(View.VISIBLE);
+        heroArt.setVisibility(heroArtShown ? View.VISIBLE : View.GONE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
         heroArt.forceHasOverlappingRendering(false);
         View scrim = findViewById(R.id.heroScrim);

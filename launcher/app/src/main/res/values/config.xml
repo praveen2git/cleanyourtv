@@ -182,7 +182,7 @@
          screen at power-off, InputKeyService opens it again after a boot or when the TV wakes into Home. -->
     <bool name="resume_last_input">true</bool>
     <!-- Log each key InputKeyService sees (logcat tag TvHome.Keys), to find a button's keycode. -->
-    <bool name="log_keys">true</bool>
+    <bool name="log_keys">false</bool>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
          com.xgimi.xrmservice does, on every one of its remote keys, power included (docs/TROUBLESHOOTING.md).
