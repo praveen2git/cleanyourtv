@@ -26,6 +26,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean lightGlass;
     /** The band's top and bottom the glass gradient was made for; it is remade when they move. */
     private float shaderTop = Float.NaN, shaderBottom = Float.NaN;
+    /** false keeps the dock's spacing but draws no band (tvos_style: the top row floats). */
+    private final boolean visible;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -34,6 +36,13 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param lightGlass  a light frosted band like the pills, for a sky or wallpaper behind it.
      */
     DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass) {
+        this(dockSize, density, translucent, names, opacity, lightGlass, true);
+    }
+
+    /** @param visible false keeps the dock's spacing but draws no band (tvos_style). */
+    DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
+                   boolean visible) {
+        this.visible = visible;
         this.dockSize = dockSize;
         this.density = density;
         this.namesRoom = names ? 22 * density : 0;
@@ -56,6 +65,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDraw(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+        if (!visible) return;
         boolean any = false;
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);

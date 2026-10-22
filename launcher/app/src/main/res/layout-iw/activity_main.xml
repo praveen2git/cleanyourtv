@@ -331,6 +331,17 @@
                     android:drawableStart="@drawable/ic_swap_vert"
                     android:nextFocusDown="@+id/grid" />
 
+                <!-- Private DNS switch (dns_button): ad-blocking resolver on or off, or a custom one. -->
+                <TextView
+                    android:id="@+id/btnDns"
+                    style="@style/TopButton"
+                    android:maxWidth="200dp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="@string/dns_off"
+                    android:drawableStart="@drawable/ic_shield"
+                    android:nextFocusDown="@+id/grid" />
+
                 <TextView
                     android:id="@+id/btnWifi"
                     style="@style/TopButton"

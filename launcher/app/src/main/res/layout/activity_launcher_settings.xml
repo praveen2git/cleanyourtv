@@ -85,6 +85,33 @@
             android:textSize="14sp" />
 
         <TextView
+            android:id="@+id/tvosChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/tvos_style_hint"
+            android:textColor="#FFACB8C1"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/resumeInputChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp" />
+
+        <TextView
+            android:id="@+id/resumeInputHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/resume_last_input_hint"
+            android:textColor="#FFACB8C1"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/followThemeChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="18dp"

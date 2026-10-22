@@ -282,6 +282,7 @@
                 android:layout_width="wrap_content"
                 android:layout_below="@id/leftBlock"
                 android:layout_alignStart="@id/leftBlock"
+                android:layout_alignParentEnd="true"
                 android:gravity="left"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -320,6 +321,17 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
+                    android:nextFocusDown="@+id/grid" />
+
+                <!-- Private DNS switch (dns_button): ad-blocking resolver on or off, or a custom one. -->
+                <TextView
+                    android:id="@+id/btnDns"
+                    style="@style/TopButton"
+                    android:maxWidth="200dp"
+                    android:singleLine="true"
+                    android:ellipsize="end"
+                    android:text="@string/dns_off"
+                    android:drawableStart="@drawable/ic_shield"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

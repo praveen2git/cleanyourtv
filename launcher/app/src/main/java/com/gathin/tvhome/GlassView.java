@@ -58,6 +58,14 @@ public class GlassView extends View {
         invalidate();
     }
 
+    /** tvos_style: only a soft sheen over the lifted tile, no rim or glow; the tile's own shadow does the rest. */
+    private boolean minimal;
+
+    void setMinimal(boolean on) {
+        minimal = on;
+        invalidate();
+    }
+
     void setRadius(float px) {
         radius = px;
         invalidate();
@@ -74,6 +82,14 @@ public class GlassView extends View {
     protected void onDraw(Canvas canvas) {
         float inset = 6f * density;   // room for the glow
         rect.set(inset, inset, getWidth() - inset, getHeight() - inset);
+
+        if (minimal) {
+            canvas.save();
+            canvas.clipRect(rect.left, rect.top, rect.right, rect.top + rect.height() * 0.45f);
+            canvas.drawRoundRect(rect, radius, radius, specular);
+            canvas.restore();
+            return;
+        }
 
         // Outer glow: thin rings across the inset, each a little fainter, so it fades out smoothly. Three wide
         // strokes left visible bands once the glow took an app's colour at a stronger alpha. The hardware layer

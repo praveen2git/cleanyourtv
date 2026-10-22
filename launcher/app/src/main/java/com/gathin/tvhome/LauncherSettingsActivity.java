@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +24,10 @@ public final class LauncherSettingsActivity extends Activity {
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
+    private TextView resumeInputChoice;
+    private boolean resumeInput;
+    private TextView tvosChoice;
+    private boolean tvosStyle;
     private int columns;
     private int rowsBelowDock;
     private boolean animations;
@@ -93,6 +98,26 @@ public final class LauncherSettingsActivity extends Activity {
                         .show();
             }
         });
+        tvosChoice = findViewById(R.id.tvosChoice);
+        tvosStyle = Config.tvosStyle(this);
+        tvosChoice.setOnClickListener(v -> {
+            tvosStyle = !tvosStyle;
+            choices.edit().putBoolean(Config.TVOS_STYLE_KEY, tvosStyle).apply();
+            setResult(RESULT_OK);   // Home rebuilds its top bar when this screen closes
+            refresh();
+        });
+        // Only for TVs with a Live TV app to go back to; InputKeyService reads the choice at each power on.
+        resumeInputChoice = findViewById(R.id.resumeInputChoice);
+        resumeInput = Config.resumeLastInput(this);
+        resumeInputChoice.setOnClickListener(v -> {
+            resumeInput = !resumeInput;
+            choices.edit().putBoolean(Config.RESUME_LAST_INPUT_KEY, resumeInput).apply();
+            refresh();
+        });
+        if (getString(R.string.live_tv_package).isEmpty()) {
+            resumeInputChoice.setVisibility(View.GONE);
+            findViewById(R.id.resumeInputHint).setVisibility(View.GONE);
+        }
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
@@ -184,6 +209,9 @@ public final class LauncherSettingsActivity extends Activity {
                 getString(animations ? R.string.on : R.string.off)));
         advancedChoice.setText(getString(R.string.advanced_effects_state,
                 getString(advancedEffects ? R.string.on : R.string.off)));
+        tvosChoice.setText(getString(R.string.tvos_style_state, getString(tvosStyle ? R.string.on : R.string.off)));
+        resumeInputChoice.setText(getString(R.string.resume_last_input_state,
+                getString(resumeInput ? R.string.on : R.string.off)));
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);

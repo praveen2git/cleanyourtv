@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deep ink, a touch lighter at the top, like the Home wallpaper without its glows. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#FF0E1626" android:centerColor="#FF080B14" android:endColor="#FF05060B" />
+</shape>

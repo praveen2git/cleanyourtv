@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- All apps (library_opens_apps), Apple TV style: a full screen of app cards, six across, A to Z. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/all_apps_bg">
+
+    <!-- Home's wallpaper when the theme has one, under a scrim so the cards stay the brightest thing. -->
+    <ImageView
+        android:id="@+id/wallpaper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:contentDescription="@null" />
+
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#59000000"
+        android:visibility="gone" />
+
+<LinearLayout
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingStart="96dp"
+    android:paddingEnd="96dp"
+    android:paddingTop="40dp"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:baselineAligned="true">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:gravity="left"
+            android:text="@string/app_library"
+            android:textColor="#FFFFFFFF"
+            android:textSize="38sp"
+            android:fontFamily="@font/outfit_light"
+            android:letterSpacing="-0.01"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#80FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="@font/outfit_medium"
+            android:letterSpacing="0.08"
+            android:textAllCaps="true" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/apps"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="18dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="48dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:scrollbars="none"
+        android:descendantFocusability="afterDescendants" />
+</LinearLayout>
+</FrameLayout>

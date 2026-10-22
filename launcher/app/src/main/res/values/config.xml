@@ -17,10 +17,18 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
-        <item>com.netflix.ninja</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>com.sony.dtv.tvx</item>
         <item>com.google.android.youtube.tv</item>
         <item>in.startv.hotstar</item>
+        <item>com.suntv.sunnxt</item>
+        <item>com.sonyliv</item>
+        <!-- Past the fifth, the list sets the order of the first grid row. -->
+        <item>com.graymatrix.did</item>
+        <item>com.fenyx.jtv</item>
+        <item>com.sony.dtv.smartmediaapp</item>
+        <item>com.yablio.sendfilestotv</item>
+        <item>com.sonypicturescore</item>
+        <item>com.android.vending</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -28,13 +36,18 @@
     <bool name="fill_dock">true</bool>
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
+    <!-- Sony settings utilities, kept installed and reachable from the App library, but not on Home. -->
     <string-array name="hidden_apps">
-        <item>com.mediatek.wwtv.tvcenter</item>
-        <item>com.mitv.gallery</item>
+        <item>com.sony.dtv.ecodashboard</item>
+        <item>com.sony.dtv.livingfit</item>
+        <item>com.sony.dtv.timers</item>
+        <item>com.sony.dtv.seeds.iot</item>
+        <item>com.sony.dtv.osat.music</item>
+        <item>com.vewd.core.integration.dia</item>
     </string-array>
 
     <!-- The TV's Live TV / tuner app, offered at the end of the Inputs menu. Leave empty to omit. -->
-    <string name="live_tv_package" translatable="false">com.mediatek.wwtv.tvcenter</string>
+    <string name="live_tv_package" translatable="false">com.sony.dtv.tvx</string>
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
@@ -61,6 +74,7 @@
 
     <!-- A tile's name instead of the app's own: "package=Name". It also shows above the dock. -->
     <string-array name="app_labels">
+        <item>com.sony.dtv.tvx=TV</item>
     </string-array>
     <!-- A tile's artwork instead of the app's banner: "package=drawable", a banner_* drawable bundled with the
          launcher (res/drawable). banner_tv is a magenta field with the Live TV glyph. -->
@@ -156,6 +170,19 @@
          on a tap. A listed app that is not installed leaves the button doing nothing. Leave empty to omit. -->
     <string-array name="app_keys" translatable="false">
     </string-array>
+    <!-- Remote buttons that open Home's All apps screen, by Android keycode (needs the InputKeyService).
+         284 is KEYCODE_ALL_APPS, the Apps button only the stock Google TV launcher answered. -->
+    <integer-array name="all_apps_keycodes">
+        <item>284</item>
+    </integer-array>
+    <!-- InputKeyService also catches KEYCODE_TV and KEYCODE_TV_INPUT for the input switcher. false on Sony,
+         whose own TV app (com.sony.dtv.tvx) answers both: caught here, the TV button stopped working. -->
+    <bool name="input_key_tv_keys">false</bool>
+    <!-- Power on to the last input, as Google TV's stock launcher did: when the TV app (live_tv_package) was on
+         screen at power-off, InputKeyService opens it again after a boot or when the TV wakes into Home. -->
+    <bool name="resume_last_input">true</bool>
+    <!-- Log each key InputKeyService sees (logcat tag TvHome.Keys), to find a button's keycode. -->
+    <bool name="log_keys">true</bool>
 
     <!-- Package of the stock launcher, for TVs whose firmware turns it back on after it was disabled. XGIMI's
          com.xgimi.xrmservice does, on every one of its remote keys, power included (docs/TROUBLESHOOTING.md).
@@ -212,26 +239,29 @@
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->
-    <integer name="rows_below_dock">0</integer>
+    <integer name="rows_below_dock">2</integer>
 
     <!-- The focused dock app's name in large type above the dock. false keeps only the glow, which leaves room
          for bigger tiles when rows_below_dock is 2 or 3. -->
-    <bool name="dock_title">true</bool>
+    <bool name="dock_title">false</bool>
 
     <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
          shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
-    <integer name="columns">4</integer>
+    <integer name="columns">5</integer>
 
     <!-- Basic motion is on; advanced effects are opt-in in the launcher's own Settings screen. -->
     <bool name="animations">true</bool>
-    <bool name="advanced_effects">false</bool>
+    <bool name="advanced_effects">true</bool>
 
     <!-- Optional Default-home tile; keep this key for existing themes and tile-ordering work.
          Off by default because the chooser is also available from launcher settings. -->
     <bool name="show_home_settings_shortcut">false</bool>
 
     <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
-    <bool name="app_library">false</bool>
+    <bool name="app_library">true</bool>
+    <!-- The library as an all-apps screen: OK opens the app, sorted A to Z; Add to / Remove from Home move
+         to hold OK. false keeps the original behaviour (OK adds an app to Home). -->
+    <bool name="library_opens_apps">true</bool>
 
     <!-- Module cards: an app that declares a card (docs/specs/card.md) can stand in for its tile with its own
          label, caption and glow colour, once you answer Show on the prompt. false: never look for cards or ask. -->
@@ -242,7 +272,7 @@
          slides with no bounce and settles within 5 frames, every animation lasts 90 ms or less, names, top
          shelf, glow and highlight appear instead of fading, and there is no tile entrance. Set it
          here or with "reduced_motion": true in a theme's config.json; false keeps the normal motion. -->
-    <bool name="reduced_motion">false</bool>
+    <bool name="reduced_motion">true</bool>
 
     <!-- The glass highlight springs past the tile it moves to and the focused tile zooms past its size
          before settling. false: both go straight there, with no bounce, while scrolling stays smooth
@@ -253,6 +283,9 @@
     <!-- One line under the clock: CPU, free memory and free storage. Off by default; a theme can set
          "show_stats": true. Nothing is read, and the clock does not move, while this is false. -->
     <bool name="show_stats">false</bool>
+    <!-- With show_stats off: show the same line only while a top-bar button has focus (press Up to see it),
+         and read nothing the rest of the time. -->
+    <bool name="stats_on_top_bar">true</bool>
 
     <!-- Time-of-day backdrop behind everything: a dark gradient that follows the clock, with a warm
          horizon glow around sunrise and sunset. 0 keeps the plain background (the default); 1 to 100
@@ -269,7 +302,7 @@
          colour; the shelf gets a larger name, a "Last opened" line (from the apps Home opened) and dock position
          dots, the focus glow takes the app's colour and the dock band turns translucent. false keeps the plain
          shelf. Can also be set with "cinematic_home": true in a theme's config.json. -->
-    <bool name="cinematic_home">false</bool>
+    <bool name="cinematic_home">true</bool>
 
     <!-- The glow behind the dock in the focused app's colour (red for YouTube, blue for Prime Video). false keeps
          only background_color or the wallpaper behind everything. Can also be set with "ambient_glow": false in a
@@ -287,4 +320,13 @@
          colour washes down from the top edge and fades to black, brightest along the top). The cinematic shelf
          keeps its own glow. Can also be set with "glow_style": "horizon" in a theme's config.json. -->
     <string name="glow_style" translatable="false">radial</string>
+    <!-- The cinematic shelf's dock position dots. false hides them. -->
+    <bool name="dock_dots">false</bool>
+    <!-- Apple TV look: top-bar buttons as icon-only glass circles (the focused one's name shows under the clock),
+         no greeting, no band behind the dock, and a sheen over the lifted tile instead of the glass rim. -->
+    <bool name="tvos_style">true</bool>
+
+    <!-- A DNS pill in the top bar that switches Android's Private DNS: an ad-blocking resolver, off, or a
+         custom hostname. Needs WRITE_SECURE_SETTINGS, granted once over ADB at install. -->
+    <bool name="dns_button">true</bool>
 </resources>

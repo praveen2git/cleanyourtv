@@ -270,15 +270,21 @@ final class AppLibraryDialog {
         }
         catalogTime = System.currentTimeMillis();
         Collator collator = Collator.getInstance();
+        boolean byNameOnly = opensApps();
         apps.sort((a, b) -> {
             String pa = a.activityInfo.packageName, pb = b.activityInfo.packageName;
-            int priority = LibraryApps.comparePriority(home.get(pa), installTimes.get(pa),
+            int priority = byNameOnly ? 0 : LibraryApps.comparePriority(home.get(pa), installTimes.get(pa),
                     home.get(pb), installTimes.get(pb), catalogTime);
             if (priority != 0) return priority;
             int byLabel = collator.compare(label(a), label(b));
             return byLabel != 0 ? byLabel : pa.compareTo(pb);
         });
         showCatalog();
+    }
+
+    /** library_opens_apps: OK opens any app (an all-apps screen); adding to Home moves to hold OK. */
+    private boolean opensApps() {
+        return activity.getResources().getBoolean(R.bool.library_opens_apps);
     }
 
     private String label(ResolveInfo app) {
@@ -345,7 +351,7 @@ final class AppLibraryDialog {
         count.setSingleLine(true);
         header.addView(count, new LinearLayout.LayoutParams(-2, -2));
         panel.addView(header, new LinearLayout.LayoutParams(-1, dp(44)));
-        instructions = text(activity.getString(R.string.library_hint_add), 13, 0xBBFFFFFF);
+        instructions = text(activity.getString(opensApps() ? R.string.library_hint_open : R.string.library_hint_add), 13, 0xBBFFFFFF);
         instructions.setSingleLine(true);
         instructions.setEllipsize(TextUtils.TruncateAt.END);
         instructions.setPadding(dp(12), 0, dp(12), dp(6));
@@ -599,7 +605,12 @@ final class AppLibraryDialog {
             boolean home = onHome.test(pkg);
             boolean recent = LibraryApps.recent(installTimes.getOrDefault(pkg, 0L), catalogTime);
             status.setText(home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
-            status.setVisibility(View.VISIBLE);
+            // All-apps screen: a plain list to open from, no "On Home" line, tick or tint.
+            status.setVisibility(opensApps() ? View.INVISIBLE : View.VISIBLE);
+            if (opensApps()) {
+                home = false;
+                recent = false;
+            }
             holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
             View check = holder.itemView.findViewById(R.id.dot);
             check.getLayoutParams().width = dp(home ? 18 : 8);
@@ -608,14 +619,14 @@ final class AppLibraryDialog {
             else check.setBackground(surface(0xFF70D9A0, 8));
             check.setVisibility(home || recent ? View.VISIBLE : View.GONE);
             holder.itemView.setOnClickListener(v -> {
-                if (onHome.test(pkg)) open(app);
+                if (opensApps() || onHome.test(pkg)) open(app);
                 else changeHome(app, true);
             });
             holder.itemView.setOnLongClickListener(v -> { showActions(app, v); return true; });
             holder.itemView.setOnFocusChangeListener((v, focused) -> {
                 if (focused) {
                     selectedPackage = pkg;
-                    instructions.setText(onHome.test(pkg)
+                    instructions.setText(opensApps() || onHome.test(pkg)
                             ? R.string.library_hint_open : R.string.library_hint_add);
                     v.post(() -> { if (v.hasFocus() && catalog != null) highlight(v, true); });
                     int index = holder.getBindingAdapterPosition();

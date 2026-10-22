@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One All apps card: the app's TV banner full bleed, or its icon on a tint taken from the icon, and the
+     name under the card while it has focus. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="10dp"
+    android:paddingBottom="6dp"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <FrameLayout
+        android:id="@+id/card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/tile_bg"
+        android:focusable="true"
+        android:clickable="true">
+
+        <ImageView
+            android:id="@+id/banner"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:contentDescription="@null" />
+
+        <ImageView
+            android:id="@+id/icon"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null" />
+
+        <View
+            android:id="@+id/sheen"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/card_sheen"
+            android:alpha="0" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="22dp"
+        android:layout_gravity="bottom"
+        android:gravity="center"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:alpha="0"
+        android:textColor="#F2FFFFFF"
+        android:textSize="15sp"
+        android:fontFamily="@font/outfit_medium" />
+</FrameLayout>

@@ -39,6 +39,23 @@ final class Config {
     static final String SETTINGS_NAME = "launcher_settings";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
+    /** Launcher settings' "Power on to last input"; a theme push leaves it alone. */
+    static final String RESUME_LAST_INPUT_KEY = "resume_last_input";
+
+    /** Launcher settings' "Apple TV look"; a theme push leaves it alone. */
+    static final String TVOS_STYLE_KEY = "tvos_style";
+
+    /** tvos_style: config.xml's default, or the owner's choice in Launcher settings. */
+    static boolean tvosStyle(Context ctx) {
+        return ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getBoolean(TVOS_STYLE_KEY,
+                ctx.getResources().getBoolean(R.bool.tvos_style));
+    }
+
+    /** resume_last_input: config.xml's default, or the owner's choice in Launcher settings. */
+    static boolean resumeLastInput(Context ctx) {
+        return ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getBoolean(RESUME_LAST_INPUT_KEY,
+                ctx.getResources().getBoolean(R.bool.resume_last_input));
+    }
     private static final String THEME_REVISION_NAME = "theme_revision";
     private static final String THEME_SIGNATURE_KEY = "theme_signature";
 

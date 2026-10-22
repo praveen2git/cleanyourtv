@@ -165,6 +165,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private int wifiIcon;
     /** The pills have been filled in once; later resumes refresh them after the first frame. */
     private boolean pillsShown;
+    /** Private DNS pill (dns_button); gone when off. */
+    private TextView btnDns;
     private TextView shamsiDate;
     private TextView stats;
     private List<RaceWeekend.Race> raceCalendar;
@@ -172,6 +174,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView raceKicker, raceHeadline, raceSessions;
     /** config.xml show_stats, overridable by a theme. Off: the line is gone and nothing is read. */
     private boolean showStats;
+    /** stats_on_top_bar: the stats line shows (and is read) only while a top-bar button has focus. */
+    private boolean statsOnTopBar;
+    /** tvos_style: icon-only top bar, no dock band, sheen-only highlight over a lifted tile (Apple TV look). */
+    private boolean tvosStyle;
+    /** The last RAM/storage reading, kept so a top-bar button's name can be shown with it at once. */
+    private String lastStatsLine = "";
     private boolean shamsi;
     /** greeting_name: said after the greeting, which is shown in capitals. */
     private String greetingName = "";
@@ -256,6 +264,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Dock place being changed in edit-dock mode, or -1 while the place is still being chosen. */
     private int dockEditSlot = -1;
     private AppLibraryDialog appLibrary;
+    /** Sent by InputKeyService for the remote's Apps button: open the All apps screen. */
+    static final String ACTION_ALL_APPS = "com.gathin.tvhome.action.ALL_APPS";
+    private boolean allAppsPending;
     private boolean libraryFocusPending;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
@@ -405,6 +416,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         raceHeadline = findViewById(R.id.raceHeadline);
         raceSessions = findViewById(R.id.raceSessions);
         showStats = cfg.showStats;
+        statsOnTopBar = !showStats && getResources().getBoolean(R.bool.stats_on_top_bar);
+        tvosStyle = Config.tvosStyle(this);
+        if (tvosStyle) glass.setMinimal(true);
+        // Its room is kept, so the line appearing on the top bar never moves the dock.
+        if (statsOnTopBar) stats.setVisibility(View.INVISIBLE);
         shamsi = cfg.shamsiDate;
         greetingName = cfg.greetingName;
         if (shamsi) {
@@ -473,7 +489,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass));
+        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, !tvosStyle));
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
             grid.setLayoutAnimation(new LayoutAnimationController(
@@ -577,6 +593,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             else makeIconOnly(btnWifi);
             makeIconOnly((TextView) btnSettings);
         }
+        btnDns = findViewById(R.id.btnDns);
+        btnDns.setOnClickListener(v -> showDnsMenu());
+        btnDns.setVisibility(getResources().getBoolean(R.bool.dns_button) ? View.VISIBLE : View.GONE);
+        if (tvosStyle) {
+            iconOnly((TextView) btnInputs, getString(R.string.inputs));
+            iconOnly((TextView) btnSettings, getString(R.string.settings));
+            greeting.setVisibility(View.GONE);   // Apple TV's home has no greeting; the clock stays
+        }
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
             return true;
@@ -604,8 +628,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
+        btnDns.setOnKeyListener(pillKeys);
         if (advancedEffects) {
-            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnLibraryTop, btnSettings}) {
+            for (View button : new View[]{btnInputs, btnWifi, btnDns, btnReorder, btnLibraryTop, btnSettings}) {
                 button.setOnFocusChangeListener((view, focused) -> view.animate()
                         .scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
                         .setDuration(reducedMotion ? Motion.REDUCED_MS : 160).start());
@@ -617,6 +642,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
             boolean onTile = newF != null && newF.getId() == R.id.card;
             if (!onTile) hideGlass();
+            if (statsOnTopBar) {
+                boolean onBar = newF != null && newF.getParent() == findViewById(R.id.topButtons);
+                if (onBar) {
+                    startStats();
+                    showTopBarLabel(newF);
+                } else {
+                    stopStats();
+                }
+            }
         });
 
         packageFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -706,6 +740,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onNewIntent(intent);
         if (openLauncherSettingsIfAsked(intent)) return;
         if (openInputsIfAsked(intent)) return;
+        if (intent != null && ACTION_ALL_APPS.equals(intent.getAction())) {
+            allAppsPending = true;   // opened in onResume, once Home is in front
+            return;
+        }
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
         grid.scrollToPosition(0);
         lastFocused = 0;
@@ -743,6 +781,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         restartIdleClock();
         promptsPaused = false;
+        if (AllAppsActivity.homeChanged) {   // a shortcut added or removed on the All apps screen
+            AllAppsActivity.homeChanged = false;
+            tileRefresh.invalidate();
+        }
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:
@@ -770,6 +812,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateWifiLabel();
             updateInputsButton();
             pillsShown = true;
+        }
+        updateDnsLabel();
+        if (allAppsPending || ACTION_ALL_APPS.equals(getIntent().getAction())) {
+            allAppsPending = false;
+            setIntent(new Intent(Intent.ACTION_MAIN));   // a later resume must not open it again
+            // After the first layout, so the popup has a window to attach to on a cold start too.
+            grid.postDelayed(() -> {
+                if (!isFinishing()) onLibraryRequested();
+            }, 400);
         }
         if (showStats) startStats();
         sky.update();
@@ -1294,6 +1345,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onLibraryRequested() {
+        if (getResources().getBoolean(R.bool.library_opens_apps)) {
+            // The full-screen All apps grid; it needs to know which apps are on Home for its hold-OK menu.
+            ArrayList<String> home = new ArrayList<>();
+            for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(
+                    new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0)) {
+                String pkg = info.activityInfo.packageName;
+                if (adapter.containsPackage(pkg)) home.add(pkg);
+            }
+            for (android.content.pm.ResolveInfo info : getPackageManager().queryIntentActivities(
+                    new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+                String pkg = info.activityInfo.packageName;
+                if (adapter.containsPackage(pkg) && !home.contains(pkg)) home.add(pkg);
+            }
+            if (openPopup != null) openPopup.dismiss();
+            startActivity(new Intent(this, AllAppsActivity.class)
+                    .putStringArrayListExtra(AllAppsActivity.EXTRA_HOME_PACKAGES, home));
+            return;
+        }
         if (appLibrary != null) appLibrary.close();
         if (openPopup != null) openPopup.dismiss();
         libraryFocusPending = false;
@@ -1487,7 +1556,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 68f);
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
-        heroDots.setVisibility(View.VISIBLE);
+        heroDots.setVisibility(getResources().getBoolean(R.bool.dock_dots) ? View.VISIBLE : View.GONE);
         heroArt.setVisibility(View.VISIBLE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
         heroArt.forceHasOverlappingRendering(false);
@@ -1568,6 +1637,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** One dot per dock app, the focused one drawn long and white. Hebrew docks start on the right, so do the dots. */
     private void updateHeroDots(int position) {
+        if (!getResources().getBoolean(R.bool.dock_dots)) {
+            heroDots.setVisibility(View.GONE);
+            return;
+        }
         int count = Math.min(adapter.dockFilled(), COLUMNS);
         heroDots.setVisibility(count > 1 ? View.VISIBLE : View.INVISIBLE);
         if (heroDots.getChildCount() != count) {
@@ -1753,11 +1826,32 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (statsBg != bg) return;
                 String line = readStatsLine();
                 handler.post(() -> {
-                    if (showStats && stats != null && statsBg == bg) stats.setText(line);
+                    if ((showStats || statsOnTopBar) && stats != null && statsBg == bg) {
+                        lastStatsLine = line;
+                        View focus = getCurrentFocus();
+                        if (statsOnTopBar && focus != null && focus.getParent() == findViewById(R.id.topButtons)) {
+                            showTopBarLabel(focus);
+                        } else {
+                            stats.setText(line);
+                        }
+                    }
                 });
                 if (statsBg == bg) bg.postDelayed(this, STATS_MS);
             }
         });
+    }
+
+    /** "Ad block on  ·  RAM 1166 MB free  ·  Storage 1.7 GB free": the focused button's name (tvos_style), then the stats. */
+    private void showTopBarLabel(View button) {
+        if (!statsOnTopBar) return;
+        CharSequence name = tvosStyle ? button.getContentDescription() : null;
+        StringBuilder text = new StringBuilder();
+        if (name != null && name.length() > 0) text.append(name);
+        if (!lastStatsLine.isEmpty()) {
+            if (text.length() > 0) text.append("  ·  ");
+            text.append(lastStatsLine);
+        }
+        stats.setText(text);
     }
 
     private void stopStats() {
@@ -1766,6 +1860,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         statsThread.quit();
         statsThread = null;
         statsBg = null;
+        if (statsOnTopBar) {
+            stats.setText("");
+            stats.setVisibility(View.INVISIBLE);   // keeps its room, so the dock does not move
+            return;
+        }
         // Paused (the quick panel or an app on top): keep the last line on screen. Taking it away moved the grid up
         // under a glass highlight that stayed put.
         if (!showStats) stats.setVisibility(View.GONE);
@@ -2184,6 +2283,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
         String text = getString(R.string.wifi);
+        String signal = null;
         boolean vpn = false, online = false;
         int icon = R.drawable.ic_wifi;
         // The diya's flame: 0 is out (offline), 1 to 4 follow the Wi-Fi signal, Ethernet burns steady at 4.
@@ -2208,6 +2308,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (!online) {
                 text = getString(R.string.offline);
                 vpn = false;
+                if (tvosStyle) icon = R.drawable.ic_wifi_off;   // icon-only button: offline must look different
             } else if (ethernet) {
                 text = getString(R.string.ethernet);
                 icon = R.drawable.ic_ethernet;
@@ -2218,6 +2319,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 WifiInfo info = wm != null ? wm.getConnectionInfo() : null;
                 String ssid = info != null ? info.getSSID() : null;
                 flame = info != null ? Math.max(1, Math.min(4, WifiManager.calculateSignalLevel(info.getRssi(), 5))) : 3;
+                if (tvosStyle) {
+                    // Icon-only button: the lit arcs show the signal (1 weak, 2 good, 3 strong).
+                    icon = flame >= 3 ? R.drawable.ic_wifi_3 : flame == 2 ? R.drawable.ic_wifi_2 : R.drawable.ic_wifi_1;
+                    signal = getString(flame >= 3 ? R.string.signal_strong : flame == 2 ? R.string.signal_good
+                            : R.string.signal_weak);
+                }
                 if (ssid != null) {
                     ssid = ssid.replace("\"", "").trim();
                     if (!ssid.isEmpty() && !ssid.contains("unknown") && !ssid.equals("0x")) text = ssid;
@@ -2256,12 +2363,68 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (online && flame == 0) flame = 3;   // online some other way (cellular, USB tethering)
             diya.setSteady(steady);
             diya.setFlame(flame);
+        } else if (tvosStyle) {
+            btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
         } else {
             if (icon != wifiIcon) {
                 wifiIcon = icon;
                 btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
             }
         }
+        // Shown under the clock while the button has focus: "Wi-Fi connected · Strong signal", "Ethernet connected", "Offline".
+        if (tvosStyle) iconOnly(btnWifi, !online ? text : signal == null
+                ? getString(R.string.network_connected, text)
+                : getString(R.string.network_connected, text) + "  ·  " + signal);
+        if (tvosStyle && !(festive && diya != null)) {
+            // The glass circle with the status dot painted over it; the selector still follows focus.
+            btnWifi.setBackground(new android.graphics.drawable.LayerDrawable(
+                    new Drawable[]{getDrawable(R.drawable.circle_bg), statusDot(online)}));
+        }
+    }
+
+    /**
+     * A status dot at the network icon's top right, green while online and red when offline, so the icon-only
+     * button reads at a glance. It is a layer of the button's background, so the icon keeps the normal focus tint
+     * and the dot keeps its colour. The icon sits in the 52dp circle's 15dp padding: the dot goes by its corner.
+     */
+    private Drawable statusDot(boolean online) {
+        final float cx = 36 * density, cy = 17 * density, r = 3 * density, ring = 1f * density;
+        final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setColor(online ? 0xFF34C759 : 0xFFFF453A);
+        final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        edge.setColor(0xFF0B1424);
+        return new Drawable() {
+            @Override
+            public void draw(@NonNull Canvas canvas) {
+                Rect b = getBounds();
+                canvas.drawCircle(b.left + cx, b.top + cy, r + ring, edge);
+                canvas.drawCircle(b.left + cx, b.top + cy, r, fill);
+            }
+
+            @Override public void setAlpha(int alpha) { }
+            @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+    }
+
+    /**
+     * tvos_style: the top-bar button as a glass circle with only its icon, like Apple TV's Control Center. Its
+     * name moves to the content description, which the line under the clock shows while the button has focus.
+     */
+    private void iconOnly(TextView button, CharSequence name) {
+        button.setText("");
+        button.setContentDescription(name);
+        button.setCompoundDrawablePadding(0);
+        int size = Math.round(52 * density), pad = Math.round(15 * density);
+        ViewGroup.LayoutParams lp = button.getLayoutParams();
+        if (lp.width != size || lp.height != size) {
+            lp.width = size;
+            lp.height = size;
+            button.setLayoutParams(lp);
+        }
+        button.setPadding(pad, pad, pad, pad);
+        button.setBackgroundResource(R.drawable.circle_bg);
+        if (button.isFocused()) showTopBarLabel(button);
     }
 
     /** config.xml icon_only_buttons. */
@@ -2706,6 +2869,114 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         rows.addView(row);
     }
 
+    // ---- private DNS --------------------------------------------------------------------------------
+
+    /**
+     * Short, so the date keeps its room: "Ad block" with a ticked shield for any AdGuard resolver (a personal
+     * one too, <id>.d.adguard-dns.com), the outline shield when Private DNS is off, "DNS" for anything else.
+     */
+    private void updateDnsLabel() {
+        if (btnDns.getVisibility() != View.VISIBLE) return;
+        String host = PrivateDns.current(this);
+        String label;
+        if (host == null || PrivateDns.isAdGuard(host)) label = getString(R.string.dns_ad_block);
+        else if (PrivateDns.CLOUDFLARE.equals(host)) label = getString(R.string.dns_menu_cloudflare);
+        else label = getString(R.string.dns_custom_short);
+        btnDns.setText(label);
+        btnDns.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                host == null ? R.drawable.ic_shield_off : R.drawable.ic_shield, 0, 0, 0);
+        if (tvosStyle) iconOnly(btnDns, host == null ? getString(R.string.dns_off)
+                : PrivateDns.isAdGuard(host) ? getString(R.string.dns_on) : host);
+    }
+
+    /** Glass dropdown under the DNS pill: off, the presets, the last custom resolver and "Custom DNS…". */
+    private void showDnsMenu() {
+        View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        PopupWindow popup = glassPopup(panel, (int) (320 * density));   // wide enough for <id>.d.adguard-dns.com
+        String current = PrivateDns.current(this);
+        // A resolver set elsewhere (Settings, adb) is kept as the custom row, so turning it off loses nothing.
+        if (current != null && !PrivateDns.isPreset(current)) PrivateDns.saveCustom(this, current);
+        String custom = PrivateDns.savedCustom(this);
+        View focus = addDnsRow(rows, popup, getString(R.string.dns_menu_off), null, current);
+        View row = addDnsRow(rows, popup, getString(R.string.dns_menu_adguard), PrivateDns.ADGUARD, current);
+        if (current == null) focus = row;   // off: one press turns ad blocking on
+        addDnsRow(rows, popup, getString(R.string.dns_menu_family), PrivateDns.ADGUARD_FAMILY, current);
+        addDnsRow(rows, popup, getString(R.string.dns_menu_cloudflare), PrivateDns.CLOUDFLARE, current);
+        if (custom != null) {
+            row = addDnsRow(rows, popup, custom, custom, current);
+            if (current == null) focus = row;   // off: the owner's own resolver is the one press back on
+        }
+        addSeparator(rows);
+        addSettingsMenuRow(rows, popup, R.string.dns_menu_custom, this::askCustomDns);
+        for (int i = 0; i < rows.getChildCount(); i++) {
+            View child = rows.getChildAt(i);
+            if (child.getTag() != null && child.getTag().equals(current)) focus = child;
+        }
+        dropIn(popup, panel, btnDns, getResources().getBoolean(R.bool.rtl_menu_bar) ? Gravity.START : Gravity.END);
+        focus.requestFocus();
+    }
+
+    private View addDnsRow(LinearLayout rows, PopupWindow popup, String title, String host, String current) {
+        View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        ((ImageView) row.findViewById(R.id.icon)).setImageResource(
+                host == null ? R.drawable.ic_shield_off : R.drawable.ic_shield);
+        ((TextView) row.findViewById(R.id.title)).setText(title);
+        boolean active = host == null ? current == null : host.equals(current);
+        TextView status = row.findViewById(R.id.status);
+        status.setText(R.string.dns_active);
+        status.setVisibility(active ? View.VISIBLE : View.GONE);
+        row.findViewById(R.id.dot).setVisibility(active ? View.VISIBLE : View.GONE);
+        row.setTag(host);
+        row.setOnClickListener(v -> {
+            popup.dismiss();
+            applyDns(host);
+        });
+        rows.addView(row);
+        return row;
+    }
+
+    private void applyDns(String host) {
+        if (!PrivateDns.set(this, host)) {
+            Toast.makeText(this, R.string.dns_no_permission, Toast.LENGTH_LONG).show();
+            return;
+        }
+        updateDnsLabel();
+    }
+
+    /** A hostname typed with the remote (or a phone keyboard), saved and switched on. */
+    private void askCustomDns() {
+        android.widget.EditText field = new android.widget.EditText(this);
+        field.setSingleLine(true);
+        field.setHint(R.string.dns_custom_hint);
+        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        String custom = PrivateDns.savedCustom(this);
+        if (custom != null) field.setText(custom);
+        int pad = (int) (20 * density);
+        FrameLayout box = new FrameLayout(this);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(field);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this,
+                android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.dns_custom_title)
+                .setView(box)
+                .setPositiveButton(R.string.dns_save, null)
+                .setNegativeButton(R.string.dns_cancel, null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String host = PrivateDns.normalise(field.getText().toString());
+            if (host == null) {
+                field.setError(getString(R.string.dns_custom_invalid));
+                return;
+            }
+            PrivateDns.saveCustom(this, host);
+            dialog.dismiss();
+            applyDns(host);
+        }));
+        dialog.show();
+        field.requestFocus();
+    }
+
     // ---- launcher settings and module cards -------------------------------------------------------
 
     /** Keep a normal Settings click for the TV; the launcher's choices live behind hold OK. */
@@ -2714,11 +2985,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
+        addSettingsMenuRow(rows, popup, R.drawable.ic_home_settings, R.string.launcher_settings, () -> startActivityForResult(
                 new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
-        if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
-        if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
-        addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
+        if (moduleCards) addSettingsMenuRow(rows, popup, R.drawable.ic_cards, R.string.module_cards, this::showModuleCards);
+        if (dockRow) addSettingsMenuRow(rows, popup, R.drawable.ic_dock, R.string.dock_edit, this::startDockEdit);
+        addSettingsMenuRow(rows, popup, R.drawable.ic_swap_vert, R.string.reorder, this::toggleReorder);
+        addSeparator(rows);
+        addSettingsMenuRow(rows, popup, R.drawable.ic_restart, R.string.restart, () -> {
+            // Only Android may restart the TV: InputKeyService opens its power dialog and presses Restart.
+            if (!InputKeyService.restart()) open(systemIntent(Settings.ACTION_SETTINGS));
+        });
+        addSettingsMenuRow(rows, popup, R.drawable.ic_power, R.string.power_off, () -> {
+            // Standby through InputKeyService; without it, TV Settings.
+            if (!InputKeyService.sleep()) open(systemIntent(Settings.ACTION_SETTINGS));
+        });
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
         // Hebrew puts Settings at the left of the header: grow the menu inward from it.
@@ -2728,8 +3008,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int title, Runnable action) {
+        addSettingsMenuRow(rows, popup, 0, title, action);
+    }
+
+    /** @param iconRes the row's icon, tinted like the Inputs rows; 0 for none. */
+    private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int iconRes, int title, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        row.findViewById(R.id.icon).setVisibility(View.GONE);
+        ImageView icon = row.findViewById(R.id.icon);
+        if (iconRes != 0) icon.setImageResource(iconRes);
+        else icon.setVisibility(View.GONE);
         row.findViewById(R.id.dot).setVisibility(View.GONE);
         row.findViewById(R.id.status).setVisibility(View.GONE);
         ((TextView) row.findViewById(R.id.title)).setText(title);

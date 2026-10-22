@@ -22,7 +22,8 @@
     <string name="cant_open">Can\'t open %1$s</string>
     <string name="date_format">EEEE  d MMMM</string>
     <!-- Date next to the clock on Home; a locale can split it over two lines with \n. -->
-    <string name="date_format_home" translatable="false">@string/date_format</string>
+    <!-- Weekday over the date, so the two-line date never breaks after the day number. -->
+    <string name="date_format_home" translatable="false">EEEE\nd MMMM</string>
     <string name="shamsi_month_farvardin">Farvardin</string>
     <string name="shamsi_month_ordibehesht">Ordibehesht</string>
     <string name="shamsi_month_khordad">Khordad</string>
@@ -36,7 +37,7 @@
     <string name="shamsi_month_bahman">Bahman</string>
     <string name="shamsi_month_esfand">Esfand</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Memory %1$d / %2$d MB</string>
+    <string name="stats_memory">RAM %1$d / %2$d MB</string>
     <string name="stats_storage">Storage %1$s free</string>
     <string name="storage_gb_whole">%1$.0f GB</string>
     <string name="storage_gb_decimal">%1$.1f GB</string>
@@ -60,6 +61,10 @@
     <string name="follow_theme">Follow theme (reset on-TV choices)</string>
     <string name="follow_theme_hint">Uses the current theme or built-in layout and motion settings. Pushing or resetting a theme also clears your on-TV choices.</string>
     <string name="tv_settings">TV system settings</string>
+    <string name="tvos_style_state">Apple TV look: %1$s</string>
+    <string name="tvos_style_hint">Round icon buttons without names, no greeting and no band behind the dock. Off: buttons show their names, as in the original launcher.</string>
+    <string name="resume_last_input_state">Power on to last input: %1$s</string>
+    <string name="resume_last_input_hint">If you were watching TV or an HDMI input when the TV went off, it opens again at power on. Off: the TV always starts on Home.</string>
     <string name="quick_picture">Display</string>
     <string name="quick_network">Network</string>
     <string name="quick_apps">Apps</string>
@@ -95,7 +100,7 @@
     <string name="reorder">Reorder apps</string>
     <string name="reorder_hint">OK picks up an app, arrows move it, Back places it. Back again to finish.</string>
     <string name="reorder_not_saved">Couldn\'t save the new order</string>
-    <string name="app_library">App library</string>
+    <string name="app_library">All apps</string>
     <string name="library_empty">No launchable apps found</string>
     <string name="library_on_home">On Home</string>
     <string name="library_add_home">Add to Home</string>
@@ -140,4 +145,28 @@
     <!-- Cinematic top shelf (cinematic_home): the line under the focused dock app's name; %1$s is when it was
          last opened, e.g. "5 minutes ago" or "yesterday, 9:40 pm". -->
     <string name="last_opened">Last opened %1$s</string>
+    <!-- DNS pill (dns_button) and its menu. -->
+    <!-- Network button's name under the clock (tvos_style); %1$s is the network name, Wi-Fi or Ethernet. -->
+    <string name="network_connected">%1$s connected</string>
+    <string name="signal_strong">Strong signal</string>
+    <string name="signal_good">Good signal</string>
+    <string name="signal_weak">Weak signal</string>
+    <string name="power_off">Turn off</string>
+    <string name="restart">Restart</string>
+    <string name="dns_off">Ad block off</string>
+    <string name="dns_ad_block">Ad block</string>
+    <string name="dns_on">Ad block on</string>
+    <string name="dns_custom_short">DNS</string>
+    <string name="dns_menu_off">Off (automatic)</string>
+    <string name="dns_menu_adguard">AdGuard - block ads</string>
+    <string name="dns_menu_family">AdGuard Family</string>
+    <string name="dns_menu_cloudflare">Cloudflare</string>
+    <string name="dns_menu_custom">Custom DNS…</string>
+    <string name="dns_active">Active</string>
+    <string name="dns_custom_title">Private DNS hostname</string>
+    <string name="dns_custom_hint">e.g. dns.adguard-dns.com</string>
+    <string name="dns_custom_invalid">Not a valid hostname</string>
+    <string name="dns_save">Save</string>
+    <string name="dns_cancel">Cancel</string>
+    <string name="dns_no_permission">Private DNS needs a one-time grant: pm grant com.gathin.tvhome android.permission.WRITE_SECURE_SETTINGS</string>
 </resources>
